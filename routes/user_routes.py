@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from facade.user_facade import UserFacade
+from decorators import token_required, permission_required
 
 user_bp = Blueprint('user_bp', __name__)
 
@@ -14,7 +15,6 @@ def create_user():
         data['firstName'],
         data['lastName'],
         data['email'],
-        data['userType'],
         data['username'],
         data['password'],
         data.get('mobile'),
@@ -30,15 +30,18 @@ def login():
         return jsonify(token)
     return jsonify({'error': 'Invalid credentials'}), 401
 
-@user_bp.route('/<user_id>', methods=['GET'])
-def get_user(user_id):
+@user_bp.route('/user/<user_id>', methods=['GET'])
+@token_required
+def get_user(current_user, current_user_role, user_id):
     user = UserFacade.get_user(user_id)
     if user:
         return jsonify(user)
     return jsonify({'error': 'User not found'}), 404
 
 @user_bp.route('/user/<user_id>', methods=['PUT'])
-def update_user(user_id):
+@token_required
+@permission_required('admin')
+def update_user(current_user, current_user_role, user_id):
     data = request.get_json()
     success = UserFacade.update_user(
         user_id,
@@ -56,14 +59,18 @@ def update_user(user_id):
     return jsonify({'error': 'User not found'}), 404
 
 @user_bp.route('/user/<user_id>', methods=['DELETE'])
-def delete_user(user_id):
+@token_required
+@permission_required('admin')
+def delete_user(current_user, current_user_role, user_id):
     success = UserFacade.delete_user(user_id)
     if success:
         return jsonify({'message': 'User deleted'})
     return jsonify({'error': 'User not found'}), 404
 
 @user_bp.route('/user/list', methods=['GET'])
-def list_users():
+@token_required
+@permission_required('superAdmin')
+def list_users(current_user, current_user_role):
     page = int(request.args.get('page', 1))
     size = int(request.args.get('size', 10))
     users_data = UserFacade.get_users(page, size)

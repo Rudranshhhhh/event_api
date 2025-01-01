@@ -1,11 +1,12 @@
 from bson.objectid import ObjectId
 
 class User:
-    def __init__(self, firstName, lastName, email, userType, username, password, mobile=None, gender=None, _id=None):
+    def __init__(self, firstName, lastName, email, userType, userGroup, username, password, mobile=None, gender=None, _id=None):
         self.firstName = firstName
         self.lastName = lastName
         self.email = email
         self.userType = userType
+        self.userGroup = userGroup
         self.username = username
         self.password = password
         self.mobile = mobile
@@ -18,6 +19,7 @@ class User:
             "lastName": self.lastName,
             "email": self.email,
             "userType": self.userType,
+            "userGroup": self.userGroup,
             "username": self.username,
             "mobile": self.mobile,
             "gender": self.gender
@@ -33,6 +35,7 @@ class User:
             lastName=data.get("lastName"),
             email=data.get("email"),
             userType=data.get("userType"),
+            userGroup=data.get("userGroup"),
             username=data.get("username"),
             password=data.get("password"),
             mobile=data.get("mobile"),

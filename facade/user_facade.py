@@ -1,6 +1,7 @@
 import logging
 import hashlib
 import jwt
+import re
 from flask import current_app
 from bson.objectid import ObjectId
 from datetime import datetime, timedelta
@@ -8,15 +9,33 @@ from models.user import User
 
 class UserFacade:
     @staticmethod
-    def create_user(firstName, lastName, email, userType, username, password, mobile=None, gender=None):
+    def create_user(firstName, lastName, email, username, password, mobile, gender=None):
+        if not firstName or not email or not username or not password or not mobile:
+            raise ValueError("Missing mandatory fields: First Name, Email, Username, Password, Mobile")
+
+        # Validate email
+        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        if not re.match(email_regex, email):
+            raise ValueError("Invalid email format")
+
+        # Validate mobile (assuming a simple 10-digit validation for example)
+        mobile_regex = r'^\d{10}$'
+        if not re.match(mobile_regex, mobile):
+            raise ValueError("Invalid mobile number")
+
         try:
+            # Check for duplicate user by email
+            if current_app.mongo.db.users.find_one({"email": email}):
+                raise ValueError("User with this email already exists")
+
             # Encrypt the password using MD5
             encrypted_password = hashlib.md5(password.encode()).hexdigest()
             user = User(
                 firstName=firstName,
                 lastName=lastName,
                 email=email,
-                userType=userType,
+                userType=['user'], # default type is user
+                userGroup=['default'], # default group is default
                 username=username,
                 password=encrypted_password,
                 mobile=mobile,
@@ -42,7 +61,7 @@ class UserFacade:
             raise
 
     @staticmethod
-    def update_user(user_id, firstName=None, lastName=None, email=None, userType=None, username=None, password=None, mobile=None, gender=None):
+    def update_user(user_id, firstName=None, lastName=None, email=None, userType=None, userGroup=None, username=None, password=None, mobile=None, gender=None):
         try:
             update_fields = {}
             if firstName:
@@ -53,6 +72,8 @@ class UserFacade:
                 update_fields["email"] = email
             if userType:
                 update_fields["userType"] = userType
+            if userGroup:
+                update_fields["userGroup"] = userGroup
             if username:
                 update_fields["username"] = username
             if password:
@@ -87,6 +108,7 @@ class UserFacade:
             # Generate JWT token
             token = jwt.encode({
                 'user_id': user._id,
+                'user_role': user.userType,
                 'exp': datetime.utcnow() + timedelta(hours=1)
             }, current_app.config['SECRET_KEY'], algorithm='HS256')
             return {'token': token}
